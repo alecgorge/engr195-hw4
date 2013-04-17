@@ -3,6 +3,8 @@
 	
 #define R_CONST 0.082054
 
+#define DBL_PRINT(...) printf(__VA_ARGS__); fprintf(output, __VA_ARGS__)
+
 // for data input
 void get_double(char *prompt, double *stor_loc);
 void get_char(char *prompt, char *stor_loc);
@@ -18,6 +20,9 @@ void newton_raphson(double results[], double guess, double abs_pressure,
 	double converg_criteria);
 double ideal_gas_law(double abs_pressure, double temperature);
 
+// globals, for output
+FILE *output = NULL;
+
 int main(void) {
 	double temperature, init_pressure, final_pressure, num_increments,
 		   a, b, max_iterations, converg_criteria;
@@ -25,8 +30,6 @@ int main(void) {
 
 	int i = 0;
 	double abs_pressure, press_single_incr, results[2], ideal;
-
-	FILE *output = NULL;
 
 	// get inputs
 	get_double("Temperature (K)", &temperature);
@@ -54,7 +57,8 @@ int main(void) {
 	for(i = 0; i < 5; i++) {
 		get_string("Output file name", output_filename);
 
-		if((output = fopen(output_filename, "r")) != NULL) {
+		output = fopen(output_filename, "r");
+		if(output != NULL) {
 			printf("Silly goose! '%s' already exists!\n", output_filename);
 			fclose(output);
 		}
@@ -71,19 +75,19 @@ int main(void) {
 	}
 
 	// output known data
-	printf("\n\ninitial pressure (atm) = %lf\n", init_pressure);
-	printf("final pressure (atm) = %lf\n", final_pressure);
-	printf("number of pressure increments = %lf\n", num_increments);
-	printf("\na = %lf\n", a);
-	printf("b = %lf\n\n", b);
-	printf("gas type = %c\n", gas_type);
-	printf("maximum number of iterations = %lf\n", max_iterations);
-	printf("convergence criteria = %lf\n", converg_criteria);
-	printf("\n\n");
+	DBL_PRINT("\n\ninitial pressure (atm) = %lf\n", init_pressure);
+	DBL_PRINT("final pressure (atm) = %lf\n", final_pressure);
+	DBL_PRINT("number of pressure increments = %lf\n", num_increments);
+	DBL_PRINT("\na = %lf\n", a);
+	DBL_PRINT("b = %lf\n\n", b);
+	DBL_PRINT("gas type = %c\n", gas_type);
+	DBL_PRINT("maximum number of iterations = %lf\n", max_iterations);
+	DBL_PRINT("convergence criteria = %lf\n", converg_criteria);
+	DBL_PRINT("\n\n");
 
-	printf("Temperature (K)\t\tPressure (atm)\t\tMolal Volume,");
-	printf("\t\tNumber Iterations\t\tMolal Volume,\n");
-	printf("\t\t\t\t\t\t L/mol (vdW)\t\t\t\t\t\t L/mol (IGL)\n");
+	DBL_PRINT("Temperature (K)\t\tPressure (atm)\t\tMolal Volume,");
+	DBL_PRINT("\t\tNumber Iterations\t\tMolal Volume,\n");
+	DBL_PRINT("\t\t\t\t\t\t L/mol (vdW)\t\t\t\t\t\t L/mol (IGL)\n");
 
 	press_single_incr = (final_pressure - init_pressure) / num_increments;
 
@@ -95,7 +99,7 @@ int main(void) {
 		newton_raphson(results, ideal, abs_pressure, temperature, a, b,
 					   max_iterations, converg_criteria);
 
-		printf("  %lf\t\t  %10lf\t\t %10lf\t\t  %10lf\t\t\t%10lf\n", temperature,
+		DBL_PRINT("  %lf\t\t  %10lf\t\t %10lf\t\t  %10lf\t\t\t%10lf\n", temperature,
 			abs_pressure, results[0], results[1], ideal);
 	}
 
@@ -147,7 +151,7 @@ int verify(char *conf_message) {
 	printf("%s", conf_message);
 	scanf("%c", &conf); getchar();
 
-	if(conf == 'Y' || conf == 'y') return 1;
+	if(conf == 'Y' || conf == 'y' || conf == 0) return 1;
 	else if(conf == 'N' || conf == 'n') return 0;
 	else {
 		printf("Please enter 'Y' or 'y' for yes or 'N' or 'n' for no, not '%c'\n", conf);

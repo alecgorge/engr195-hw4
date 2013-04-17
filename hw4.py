@@ -1,190 +1,121 @@
-#include <stdio.h>
-#include <math.h>
-	
-#define R_CONST 0.082054
+import sys
+import math
 
-// for data input
-void get_double(char *prompt, double *stor_loc);
-void get_char(char *prompt, char *stor_loc);
-void get_string(char *prompt, char *stor_loc);
+R = 0.082054
 
-int verify(char *conf_message);
+def verify(r):
+	print("Is '%s' correct? (Y)es or (N)o: " % r, end = "")
+	char = str(input()).strip()
+	if char == 'Y' or char == 'y':
+		return True
+	if char == 'N' or char == 'n':
+		return False
 
-// for calculations
-double f(double v, double p, double a, double b, double t);
-double fprime(double v, double p, double a, double b);
-void newton_raphson(double results[], double guess, double abs_pressure,
-	double temperature, double a, double b, double max_iterations,
-	double converg_criteria);
-double ideal_gas_law(double abs_pressure, double temperature);
+	print("Please enter 'Y' or 'y' for yes or 'N' or 'n' for no, not '%c'" % char)
+	return verify(r)
 
-int main(void) {
-	double temperature, init_pressure, final_pressure, num_increments,
-		   a, b, max_iterations, converg_criteria;
-	char gas_type, output_filename[101];
+def get_inp(prompt, _type = 'lf'):
+	print(prompt + ": ", end = "")
+	r = input()
 
-	int i = 0;
-	double abs_pressure, press_single_incr, results[2], ideal;
+	if not verify(r):
+		r = get_inp(prompt, _type)
 
-	FILE *output = NULL;
+	if _type == 'c':
+		return r[0]
+	if _type == 's':
+		return r.strip()
+	return float(r)
 
-	// get inputs
-	get_double("Temperature (K)", &temperature);
-	get_double("initial pressure (atm)", &init_pressure);
-	get_double("final pressure (atm)", &final_pressure);
-	get_double("number of pressure increments", &num_increments);
+def f(v, p, a, b, t):
+	return (p + a / v**2) * (v - b) - R * t
 
-	get_char("gas type", &gas_type);
-	if(gas_type == 'c') {
-		a = 3.59200;
-		b = 0.04267;
-	}
-	else if(gas_type == 'o') {
-		a = 1.36000;
-		b = 0.03183;
-	}
-	else {
-		get_double("a (for a gas, if not carbon dioxide or oxygen)", &a);
-		get_double("b (for a gas, if not carbon dioxide or oxygen)", &b);
-	}
+def fprime(v, p, a, b):
+	return p + (a / v**2) - ((2 * a * (-1 * b + v)) / v**3)
 
-	get_double("maximum number of iterations", &max_iterations);
-	get_double("convergence criteria", &converg_criteria);
+def ideal_gas_law(p, t):
+	return (R * t) / p
 
-	for(i = 0; i < 5; i++) {
-		get_string("Output file name", output_filename);
+def double_print(txt, end = "\n"):
+	print(txt, end = end)
+	output.write(txt + end)
 
-		if((output = fopen(output_filename, "r")) != NULL) {
-			printf("Silly goose! '%s' already exists!\n", output_filename);
-			fclose(output);
-		}
-		else {
-			output = fopen(output_filename, "w");
-			break;
-		}
+def newton_raphson(guess, abs_pressure, temperature, a, b, max_iterations,
+	 converg_criteria):
+	n = f(guess, abs_pressure, a, b, temperature)
+	d = fprime(guess, abs_pressure, a, b)
+	last = guess - n / d
+	this = 0.0;
 
-		// the user has inputted 5 files that exist
-		if(i == 4) {
-			printf("Unable to make \"new\" output file after 5 attempts! Exiting!\n");
-			return 1;
-		}
-	}
+	for i in range(1, max_iterations):
+		n = f(last, abs_pressure, a, b, temperature)
+		d = fprime(last, abs_pressure, a, b)
+		this = last - n / d
 
-	// output known data
-	printf("\n\ninitial pressure (atm) = %lf\n", init_pressure);
-	printf("final pressure (atm) = %lf\n", final_pressure);
-	printf("number of pressure increments = %lf\n", num_increments);
-	printf("\na = %lf\n", a);
-	printf("b = %lf\n\n", b);
-	printf("gas type = %c\n", gas_type);
-	printf("maximum number of iterations = %lf\n", max_iterations);
-	printf("convergence criteria = %lf\n", converg_criteria);
-	printf("\n\n");
+		if math.fabs((this - last) / this) <= converg_criteria:
+			return this, i+1
 
-	printf("Temperature (K)\t\tPressure (atm)\t\tMolal Volume,");
-	printf("\t\tNumber Iterations\t\tMolal Volume,\n");
-	printf("\t\t\t\t\t\t L/mol (vdW)\t\t\t\t\t\t L/mol (IGL)\n");
+		last = this
 
-	press_single_incr = (final_pressure - init_pressure) / num_increments;
+	return 0.0, max_iterations
 
-	for(abs_pressure = init_pressure
-	  ; abs_pressure <= final_pressure
-	  ; abs_pressure += press_single_incr) {
-	  	ideal = ideal_gas_law(abs_pressure, temperature);
+temperature = get_inp("Temperature (K)")
+init_pressure = round(get_inp("initial pressure (atm)"))
+final_pressure = round(get_inp("final pressure (atm)"))
+num_increments = round(get_inp("number of pressure increments"))
 
-		newton_raphson(results, ideal, abs_pressure, temperature, a, b,
-					   max_iterations, converg_criteria);
+gas_type = get_inp("gas type", "c")
+if gas_type == 'c':
+	a = 3.59200
+	b = 0.04267
+elif gas_type == 'o':
+	a = 1.36000
+	b = 0.03183
+else:
+	a = get_inp("a (for a gas, if not carbon dioxide or oxygen)")
+	b = get_inp("b (for a gas, if not carbon dioxide or oxygen)")
 
-		printf("  %lf\t\t  %10lf\t\t %10lf\t\t  %10lf\t\t\t%10lf\n", temperature,
-			abs_pressure, results[0], results[1], ideal);
-	}
+max_iterations = round(get_inp("maximum number of iterations"))
+converg_criteria = get_inp("convergence criteria")
+output_filename = ""
+output = False
 
-	fclose(output);
+for i in range(5):
+	output_filename = get_inp("Output file name", "s");
 
-	return 0;
-}
+	try:
+		output = open(output_filename, "x")
+		break
+	except:
+		print("Silly goose! '%s' already exists!" % output_filename)
 
-double f(double v, double p, double a, double b, double t) {
-	return (p + a / pow(v, 2)) * (v - b) - R_CONST * t;
-}
+	# the user has inputted 5 files that exist
+	if i == 4:
+		print("Unable to make \"new\" output file after 5 attempts! Exiting!")
+		sys.exit(1)
 
-double fprime(double v, double p, double a, double b) {
-	return p + (a / pow(v, 2)) - ((2 * a * (-1 * b + v)) / pow(v, 3));
-}
+# output known data
+double_print("\n\ninitial pressure (atm) = %lf" % init_pressure)
+double_print("final pressure (atm) = %lf" % final_pressure)
+double_print("number of pressure increments = %lf" % num_increments)
+double_print("\na = %lf" % a)
+double_print("b = %lf\n" % b)
+double_print("gas type = %c" % gas_type)
+double_print("maximum number of iterations = %lf" % max_iterations)
+double_print("convergence criteria = %lf" % converg_criteria)
+double_print("\n")
 
-double ideal_gas_law(double p, double t) {
-	return (R_CONST * t) / p;
-}
+double_print("Temperature (K)\t\tPressure (atm)\t\tMolal Volume,", end = "")
+double_print("\t\tNumber Iterations\t\tMolal Volume,")
+double_print("\t\t\t\t\t\t L/mol (vdW)\t\t\t\t\t\t L/mol (IGL)")
 
-void newton_raphson(double results[], double guess, double abs_pressure,
-	double temperature, double a, double b, double max_iterations,
-	double converg_criteria) {
-	int i = 0;
-	double last = guess - f(guess, abs_pressure, a, b, temperature)
-						/ fprime(guess, abs_pressure, a, b);
-	double this = 0.0;
+press_single_incr = round((final_pressure - init_pressure) / num_increments)
+for abs_pressure in range(init_pressure, final_pressure+press_single_incr, press_single_incr):
+	ideal = ideal_gas_law(abs_pressure, temperature)
 
-	for(i = 1; i < max_iterations; i++) {
-		this = last - f(last, abs_pressure, a, b, temperature)
-			        / fprime(last, abs_pressure, a, b);
+	(guess, iterations) = newton_raphson(ideal, abs_pressure, temperature, a, b,  max_iterations, converg_criteria)
 
-		if(fabs((this - last) / this) <= converg_criteria) {
-			results[0] = this;
-			results[1] = i + 1;
-			return;
-		}
+	double_print("  %lf\t\t  %10lf\t\t %10lf\t\t  %10lf\t\t\t%10lf" % (temperature, abs_pressure, guess, iterations, ideal))
 
-		last = this;
-	}
-
-	results[0] = 0.0;
-	results[1] = max_iterations;
-}
-
-int verify(char *conf_message) {
-	char conf;
-
-	printf("%s", conf_message);
-	scanf("%c", &conf); getchar();
-
-	if(conf == 'Y' || conf == 'y') return 1;
-	else if(conf == 'N' || conf == 'n') return 0;
-	else {
-		printf("Please enter 'Y' or 'y' for yes or 'N' or 'n' for no, not '%c'\n", conf);
-		return verify(conf_message);
-	}
-}
-
-void get_double(char *prompt, double *stor_loc) {
-	char conf_message[101];
-
-	printf("%s: ", prompt);
-	scanf("%lf", stor_loc); getchar();
-
-	sprintf(conf_message, "Is '%lf' correct? (Y)es or (N)o: ", *stor_loc);
-	
-	if(!verify(conf_message)) get_double(prompt, stor_loc);
-}
-
-void get_char(char *prompt, char *stor_loc) {
-	char conf_message[101];
-
-	printf("%s: ", prompt);
-	scanf("%c", stor_loc); getchar();
-
-	sprintf(conf_message, "Is '%c' correct? (Y)es or (N)o: ", *stor_loc);
-	
-	if(!verify(conf_message)) get_char(prompt, stor_loc);
-}
-
-void get_string(char *prompt, char *stor_loc) {
-	char conf_message[202];
-
-	printf("%s: ", prompt);
-	scanf("%s", stor_loc); getchar();
-
-	sprintf(conf_message, "Is '%s' correct? (Y)es or (N)o: ", stor_loc);
-	
-	if(!verify(conf_message)) get_string(prompt, stor_loc);
-}
+output.close()
 
